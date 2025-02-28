@@ -12,6 +12,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from importlib.util import find_spec
+from os.path import join
 from pathlib import Path
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Literal,
                     Optional, Protocol, Union)
@@ -39,6 +40,7 @@ from vllm.transformers_utils.s3_utils import S3Model
 from vllm.transformers_utils.utils import is_s3
 from vllm.utils import (GiB_bytes, LayerBlockType, cuda_device_count_stateless,
                         get_cpu_memory, random_uuid, resolve_obj_by_qualname)
+from vllm.signing import get_oidc_params_from_sigfile, verify_model
 
 if TYPE_CHECKING:
     from ray.util.placement_group import PlacementGroup
@@ -259,6 +261,9 @@ class ModelConfig:
         enable_sleep_mode: bool = False,
         override_generation_config: Optional[dict[str, Any]] = None,
         model_impl: Union[str, ModelImpl] = ModelImpl.AUTO,
+        verify_signature: bool = False,
+        identity: Optional[str] = None,
+        issuer: Optional[str] = None,
     ) -> None:
         self.model = model
         self.hf_config_path = hf_config_path
@@ -272,6 +277,9 @@ class ModelConfig:
         self.rope_scaling = rope_scaling
         self.rope_theta = rope_theta
         self.model_impl = model_impl
+        self.verify_signature = verify_signature
+        self.identity = identity
+        self.issuer = issuer
 
         if hf_overrides is None:
             hf_overrides = {}
@@ -423,6 +431,21 @@ class ModelConfig:
         self._verify_quantization()
         self._verify_cuda_graph()
         self._verify_bnb_config()
+
+    def _verify_signature(self, model_path: str) -> None:
+        signature_file = join(model_path, 'model.sig')
+        identity, issuer = self.identity, self.issuer
+        if identity is None or issuer is None:
+            identity, issuer = get_oidc_params_from_sigfile(Path(signature_file))
+        try:
+            verify_model(Path(model_path),
+                         Path(signature_file),
+                         identity,
+                         issuer)
+        except Exception as err:
+            logger.error(f"Signature verification failed: {err}")
+            raise ValueError(f"Signature verification failed: {err}") from err
+        logger.info("Successfully verified signature.")
 
     @property
     def registry(self):

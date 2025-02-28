@@ -252,6 +252,9 @@ class LLMEngine:
             self.detokenizer = None
             tokenizer_group = None
 
+        if self.model_config.verify_signature:
+            self.model_config._verify_signature(self.model_config.model)
+
         # Ensure that the function doesn't contain a reference to self,
         # to avoid engine GC issues
         def get_tokenizer_for_seq(sequence: Sequence) -> AnyTokenizer:

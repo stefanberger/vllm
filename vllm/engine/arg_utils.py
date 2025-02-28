@@ -219,6 +219,10 @@ class EngineArgs:
     reasoning_parser: Optional[str] = None
     use_tqdm_on_load: bool = True
 
+    verify_signature: bool = False
+    identity: Optional[str] = None
+    issuer: Optional[str] = None
+
     def __post_init__(self):
         if not self.tokenizer:
             self.tokenizer = self.model
@@ -1041,6 +1045,24 @@ class EngineArgs:
             'it is useful if you just want to add new functions to the worker '
             'class without changing the existing functions.')
         parser.add_argument(
+            '--verify-signature',
+            action='store_true',
+            help='Verify the model signature. '
+            'Requires model.sig to be available (created during '
+            'signing by instructlab for example).')
+        parser.add_argument(
+            '--identity',
+            type=str,
+            default=None,
+            help='Expected identitiy (email address) of signer. If not given then the '
+            'identity and issuer will be taken from the certificate in model.sig.')
+        parser.add_argument(
+            '--issuer',
+            type=str,
+            default=None,
+            help='Expected issuer used by the signer. If not given then the '
+            'identity and issuer will be taken from the certificate in model.sig.')
+        parser.add_argument(
             "--generation-config",
             type=nullable_str,
             default="auto",
@@ -1164,6 +1186,9 @@ class EngineArgs:
             override_generation_config=self.override_generation_config,
             enable_sleep_mode=self.enable_sleep_mode,
             model_impl=self.model_impl,
+            verify_signature=self.verify_signature,
+            identity=self.identity,
+            issuer=self.issuer,
         )
 
     def create_load_config(self) -> LoadConfig:
