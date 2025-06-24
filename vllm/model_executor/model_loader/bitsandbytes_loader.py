@@ -28,7 +28,8 @@ from vllm.model_executor.layers.linear import (LinearBase,
                                                QKVParallelLinear,
                                                ReplicatedLinear,
                                                RowParallelLinear)
-from vllm.model_executor.model_loader.base_loader import BaseModelLoader
+from vllm.model_executor.model_loader.base_loader import (BaseModelLoader,
+                                                          DownloadType)
 from vllm.model_executor.model_loader.utils import (ParamMapping,
                                                     set_default_torch_dtype)
 from vllm.model_executor.model_loader.weight_utils import (
@@ -786,3 +787,7 @@ class BitsAndBytesModelLoader(BaseModelLoader):
 
     def download_model(self, model_config: ModelConfig) -> None:
         self._prepare_weights(model_config.model, model_config.revision)
+
+    def get_download_type(self) -> DownloadType:
+        """This class uses a Huggingface repo for downloads."""
+        return DownloadType.HUGGINGFACE_HUB

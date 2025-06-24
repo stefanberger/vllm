@@ -1,7 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
+import enum
 from abc import ABC, abstractmethod
+from typing import Optional
 
+import huggingface_hub
 import torch
 import torch.nn as nn
 
@@ -10,8 +13,13 @@ from vllm.config.load import LoadConfig
 from vllm.logger import init_logger
 from vllm.model_executor.model_loader.utils import (
     initialize_model, process_weights_after_loading, set_default_torch_dtype)
+from vllm.validation.plugins import ModelType, ModelValidationPluginRegistry
 
 logger = init_logger(__name__)
+
+
+class DownloadType(int, enum.Enum):
+    HUGGINGFACE_HUB = 1
 
 
 class BaseModelLoader(ABC):
@@ -32,6 +40,38 @@ class BaseModelLoader(ABC):
         inplace weights loading for an already-initialized model"""
         raise NotImplementedError
 
+    def get_download_type(self) -> Optional[DownloadType]:
+        """Subclass must override this and return the download type it needs"""
+        return None
+
+    def download_all_files(self, model: nn.Module, model_config: ModelConfig,
+                           load_config: LoadConfig) -> Optional[str]:
+        """Download all files. Ask the subclass for what type of download
+        it does; Huggingface is used so often, so download all files here."""
+        dt = self.get_download_type()
+        if dt == DownloadType.HUGGINGFACE_HUB:
+            return huggingface_hub.snapshot_download(
+                model_config.model,
+                allow_patterns=["*"],
+                cache_dir=self.load_config.download_dir,
+                revision=model_config.revision,
+                local_files_only=huggingface_hub.constants.HF_HUB_OFFLINE)
+        return None
+
+    def validate_model(self, model: nn.Module, model_config: ModelConfig,
+                       load_config: LoadConfig) -> None:
+        """If needed, check the model signature after downloading _all_ its
+        files."""
+        if ModelValidationPluginRegistry.model_validation_needed(
+                ModelType.MODEL_TYPE_AI_MODEL, model_config.model):
+            folder = self.download_all_files(model, model_config, load_config)
+            if folder is None:
+                raise Exception("Signature verification was requested but "
+                                "could not be done likely due to missing "
+                                "instrumentation of the used model loader.")
+            ModelValidationPluginRegistry.validate_model(
+                ModelType.MODEL_TYPE_AI_MODEL, folder, model_config.model)
+
     def load_model(self, vllm_config: VllmConfig,
                    model_config: ModelConfig) -> nn.Module:
         """Load a model with the given configurations."""
@@ -46,6 +86,7 @@ class BaseModelLoader(ABC):
                                          model_config=model_config)
 
             logger.debug("Loading weights on %s ...", load_device)
+            self.validate_model(model, model_config, vllm_config.load_config)
             # Quantization does not happen in `load_weights` but after it
             self.load_weights(model, model_config)
             process_weights_after_loading(model, model_config, target_device)

@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 # SPDX-FileCopyrightText: Copyright contributors to the vLLM project
 
+from typing import Optional
+
 from vllm.config.security import SecurityConfig
 from vllm.logger import init_logger
 from vllm.validation.plugins import (ModelType, ModelValidationPlugin,
@@ -24,11 +26,14 @@ class SignatureEnforcement(ModelValidationPlugin):
                 model_path)
         raise ValueError(f"Unsupported model_type: {model_type}")
 
-    def validate_model(self, model_type: ModelType, model_path: str) -> None:
+    def validate_model(self,
+                       model_type: ModelType,
+                       model_path: str,
+                       model: Optional[str] = None) -> None:
         security_policy = self.security_config.getSecurityPolicy()
         if security_policy:
             if model_type == ModelType.MODEL_TYPE_AI_MODEL:
-                security_policy.maybe_verify_model_signature(model_path)
+                security_policy.maybe_verify_model_signature(model_path, model)
             elif model_type == ModelType.MODEL_TYPE_LORA:
                 security_policy.maybe_verify_lora_signature(model_path)
 

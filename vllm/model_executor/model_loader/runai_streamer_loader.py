@@ -11,7 +11,8 @@ from transformers.utils import SAFE_WEIGHTS_INDEX_NAME
 
 from vllm.config import ModelConfig
 from vllm.config.load import LoadConfig
-from vllm.model_executor.model_loader.base_loader import BaseModelLoader
+from vllm.model_executor.model_loader.base_loader import (BaseModelLoader,
+                                                          DownloadType)
 from vllm.model_executor.model_loader.weight_utils import (
     download_safetensors_index_file_from_hf, download_weights_from_hf,
     runai_safetensors_weights_iterator)
@@ -102,3 +103,7 @@ class RunaiModelStreamerLoader(BaseModelLoader):
             model_weights = model_config.model_weights
         model.load_weights(
             self._get_weights_iterator(model_weights, model_config.revision))
+
+    def get_download_type(self) -> DownloadType:
+        """This class uses a Huggingface repo for downloads."""
+        return DownloadType.HUGGINGFACE_HUB

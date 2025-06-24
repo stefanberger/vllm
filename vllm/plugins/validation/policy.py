@@ -243,7 +243,7 @@ class SignatureVerificationConfig:
                 model_signing.hashing.Config().set_ignored_paths(
                     paths=list(ignore_paths) + [signature],
                     ignore_git_paths=ignore_git_paths,
-                )).verify(model_path, signature)
+                ).set_allow_symlinks(True)).verify(model_path, signature)
         except Exception as err:
             logger.error("Verification failed with error: %s", err)
             raise SignatureVerificationError(
@@ -269,7 +269,7 @@ class SignatureVerificationConfig:
                 model_signing.hashing.Config().set_ignored_paths(
                     paths=list(ignore_paths) + [signature],
                     ignore_git_paths=ignore_git_paths,
-                )).verify(model_path, signature)
+                ).set_allow_symlinks(True)).verify(model_path, signature)
         except Exception as err:
             logger.error("Verification failed with error: %s", err)
             raise SignatureVerificationError("Signature verification with "
@@ -293,7 +293,7 @@ class SignatureVerificationConfig:
                     model_signing.hashing.Config().set_ignored_paths(
                         paths=list(ignore_paths) + [signature],
                         ignore_git_paths=ignore_git_paths,
-                    )).verify(model_path, signature)
+                    ).set_allow_symlinks(True)).verify(model_path, signature)
         except Exception as err:
             logger.error("Verification failed with error: %s", err)
             raise SignatureVerificationError(
@@ -362,6 +362,7 @@ class SecurityPolicy:
     def validate(self) -> None:
         """Validate the policy with scheme and correctness of regular
         expressions and check consistency."""
+
         jsonschema.validate(instance=self.policy_json,
                             schema=SECURITY_POLICY_SCHEMA)
 
@@ -471,20 +472,26 @@ class SecurityPolicy:
             .get("signatures", {})\
             .get("loras") is not None
 
-    def verify_model_signature(self, model_path: str) -> None:
+    def verify_model_signature(self,
+                               model_path: str,
+                               model: Optional[str] = None) -> None:
         """Verify the signature on a model given its path."""
-        svc = self.getSignatureVerificationConfig("models", model_path)
+        if model is None:
+            model = model_path
+        svc = self.getSignatureVerificationConfig("models", model)
         svc.verify_signature(model_path)
 
-        self.models_verified.add(model_path)
+        self.models_verified.add(model)
 
-    def maybe_verify_model_signature(self, model_path: str) -> None:
+    def maybe_verify_model_signature(self,
+                                     model_path: str,
+                                     model: Optional[str] = None) -> None:
         """If the model path exists (as directory or a file) and signature
         verification on models is requested, then verify its signature."""
         if self.model_signature_verification_requested() and \
            os.path.isabs(model_path) and \
            os.path.exists(model_path):
-            self.verify_model_signature(model_path)
+            self.verify_model_signature(model_path, model)
 
     def model_signature_verification_needed(self, model_path) -> bool:
         """Check whether model signature verification was requested for

@@ -14,7 +14,8 @@ from transformers.utils import SAFE_WEIGHTS_INDEX_NAME
 from vllm.config import ModelConfig
 from vllm.config.load import LoadConfig
 from vllm.logger import init_logger
-from vllm.model_executor.model_loader.base_loader import BaseModelLoader
+from vllm.model_executor.model_loader.base_loader import (BaseModelLoader,
+                                                          DownloadType)
 from vllm.model_executor.model_loader.weight_utils import (
     download_safetensors_index_file_from_hf, download_weights_from_hf,
     fastsafetensors_weights_iterator, filter_duplicate_safetensors_files,
@@ -275,3 +276,7 @@ class DefaultModelLoader(BaseModelLoader):
             if weights_not_loaded:
                 raise ValueError("Following weights were not initialized from "
                                  f"checkpoint: {weights_not_loaded}")
+
+    def get_download_type(self) -> DownloadType:
+        """This class uses a Huggingface repo for downloads."""
+        return DownloadType.HUGGINGFACE_HUB

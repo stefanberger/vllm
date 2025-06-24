@@ -4,6 +4,7 @@
 import enum
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Optional
 
 from vllm.logger import init_logger
 
@@ -32,7 +33,10 @@ class ModelValidationPlugin(ABC):
         return False
 
     @abstractmethod
-    def validate_model(self, model_type: ModelType, model_path: str) -> None:
+    def validate_model(self,
+                       model_type: ModelType,
+                       model_path: str,
+                       model: Optional[str] = None) -> None:
         """Validate the model at the given model_path."""
         pass
 
@@ -65,11 +69,14 @@ class _ModelValidationPluginRegistry:
                 return True
         return False
 
-    def validate_model(self, model_type: ModelType, model_path: str) -> None:
+    def validate_model(self,
+                       model_type: ModelType,
+                       model_path: str,
+                       model: Optional[str] = None) -> None:
         """Have all plugins validate the model at the given path. Any plugin
         that cannot validate it will throw an exception."""
         for plugin in self.plugins.values():
-            plugin.validate_model(model_type, model_path)
+            plugin.validate_model(model_type, model_path, model)
 
 
 ModelValidationPluginRegistry = _ModelValidationPluginRegistry()
