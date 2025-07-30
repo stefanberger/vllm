@@ -34,12 +34,14 @@ from vllm.config import (BlockSize, CacheConfig, CacheDType, CompilationConfig,
                          VllmConfig, get_attr_docs)
 from vllm.config.multimodal import MMCacheType, MultiModalConfig
 from vllm.config.parallel import ExpertPlacementStrategy
+from vllm.config.security import SecurityConfig
 from vllm.config.utils import get_field
 from vllm.logger import init_logger
 from vllm.platforms import CpuArchEnum, current_platform
 from vllm.plugins import load_general_plugins
 from vllm.ray.lazy_utils import is_ray_initialized
 from vllm.reasoning import ReasoningParserManager
+from vllm.security.plugins import SecurityPluginRegistry
 from vllm.test_utils import MODEL_WEIGHTS_S3_BUCKET, MODELS_ON_S3
 from vllm.transformers_utils.config import (get_model_path, is_interleaved,
                                             maybe_override_with_speculators)
@@ -483,6 +485,8 @@ class EngineArgs:
     kv_sharing_fast_prefill: bool = \
         CacheConfig.kv_sharing_fast_prefill
 
+    security_policy: Optional[str] = SecurityConfig.security_policy
+
     def __post_init__(self):
         # support `EngineArgs(compilation_config={...})`
         # without having to manually construct a
@@ -495,6 +499,11 @@ class EngineArgs:
         # Setup plugins
         from vllm.plugins import load_general_plugins
         load_general_plugins()
+
+        # Set SecurityConfig on all plugins
+        SecurityPluginRegistry.set_security_config(
+            SecurityConfig(security_policy=self.security_policy))
+
         # when use hf offline,replace model id to local model path
         if huggingface_hub.constants.HF_HUB_OFFLINE:
             model_id = self.model
@@ -934,6 +943,15 @@ class EngineArgs:
         vllm_group.add_argument('--structured-outputs-config',
                                 **vllm_kwargs["structured_outputs_config"])
 
+        # Security policy arguments
+        sv_kwargs = get_kwargs(SecurityConfig)
+        sv_group = parser.add_argument_group(
+            title="SecurityConfig",
+            description=SecurityConfig.__doc__,
+        )
+        sv_group.add_argument("--security-policy",
+                              **sv_kwargs["security_policy"])
+
         # Other arguments
         parser.add_argument('--disable-log-stats',
                             action='store_true',
@@ -987,6 +1005,8 @@ class EngineArgs:
 
             self.mm_encoder_tp_mode = "data"
 
+        security_config = SecurityConfig(security_policy=self.security_policy)
+
         return ModelConfig(
             model=self.model,
             hf_config_path=self.hf_config_path,
@@ -1038,6 +1058,7 @@ class EngineArgs:
             logits_processors=self.logits_processors,
             video_pruning_rate=self.video_pruning_rate,
             io_processor_plugin=self.io_processor_plugin,
+            security_config=security_config,
         )
 
     def validate_tensorizer_args(self):

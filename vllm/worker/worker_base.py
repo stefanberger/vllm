@@ -11,6 +11,7 @@ import torch.nn as nn
 from vllm.config import VllmConfig, set_current_vllm_config
 from vllm.logger import init_logger
 from vllm.lora.request import LoRARequest
+from vllm.security.plugins import SecurityPluginRegistry
 from vllm.sequence import ExecuteModelRequest
 from vllm.utils import (enable_trace_function_call_for_thread,
                         resolve_obj_by_qualname, run_method,
@@ -207,6 +208,10 @@ class WorkerWrapperBase:
 
         from vllm.plugins import load_general_plugins
         load_general_plugins()
+
+        # Set SecurityConfig on all loaded security plugins
+        SecurityPluginRegistry.set_security_config(
+            self.vllm_config.model_config.security_config)
 
         if isinstance(self.vllm_config.parallel_config.worker_cls, str):
             worker_class = resolve_obj_by_qualname(
