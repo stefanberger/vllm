@@ -17,6 +17,7 @@ from vllm.utils import (enable_trace_function_call_for_thread,
                         update_environment_variables,
                         warn_for_unimplemented_methods)
 from vllm.v1.outputs import SamplerOutput
+from vllm.validation.plugins import ModelValidationPluginRegistry
 
 logger = init_logger(__name__)
 
@@ -207,6 +208,10 @@ class WorkerWrapperBase:
 
         from vllm.plugins import load_general_plugins
         load_general_plugins()
+
+        # Set SecurityConfig on all loaded security plugins
+        ModelValidationPluginRegistry.set_security_config(
+            self.vllm_config.model_config.security_config)
 
         if isinstance(self.vllm_config.parallel_config.worker_cls, str):
             worker_class = resolve_obj_by_qualname(

@@ -50,6 +50,7 @@ from vllm.v1.outputs import ModelRunnerOutput
 from vllm.v1.request import Request, RequestStatus
 from vllm.v1.serial_utils import MsgpackDecoder, MsgpackEncoder
 from vllm.v1.structured_output import StructuredOutputManager
+from vllm.validation.plugins import ModelType, ModelValidationPluginRegistry
 from vllm.version import __version__ as VLLM_VERSION
 
 logger = init_logger(__name__)
@@ -76,6 +77,10 @@ class EngineCore:
         self.vllm_config = vllm_config
         logger.info("Initializing a V1 LLM engine (v%s) with config: %s",
                     VLLM_VERSION, vllm_config)
+        ModelValidationPluginRegistry.set_security_config(
+            vllm_config.model_config.security_config)
+        ModelValidationPluginRegistry.validate_model(
+            ModelType.MODEL_TYPE_AI_MODEL, vllm_config.model_config.model)
 
         self.log_stats = log_stats
 
@@ -95,6 +100,13 @@ class EngineCore:
         vllm_config.cache_config.num_cpu_blocks = num_cpu_blocks
         self.collective_rpc("initialize_cache",
                             args=(num_gpu_blocks, num_cpu_blocks))
+
+        if ModelValidationPluginRegistry.model_validation_needed(
+                ModelType.MODEL_TYPE_AI_MODEL, vllm_config.model_config.model):
+            raise Exception("Signature verification was requested for "
+                            f"{vllm_config.model_config.model} but was not "
+                            "done since a code path was taken that is not yet "
+                            "instrumented for signature verification.")
 
         self.structured_output_manager = StructuredOutputManager(vllm_config)
 
