@@ -19,6 +19,7 @@ import vllm.envs as envs
 from vllm.config.multimodal import (MMCacheType, MMEncoderTPMode,
                                     MultiModalConfig)
 from vllm.config.pooler import PoolerConfig
+from vllm.config.security import SecurityConfig
 from vllm.config.utils import assert_hashable, config
 from vllm.logger import init_logger
 from vllm.platforms import current_platform
@@ -284,6 +285,9 @@ class ModelConfig:
     interleave_mm_strings: InitVar[Optional[bool]] = None
     skip_mm_profiling: InitVar[Optional[bool]] = None
     video_pruning_rate: InitVar[Optional[float]] = None
+
+    security_config: Optional[SecurityConfig] = None
+    """The model's security configuration."""
 
     def compute_hash(self) -> str:
         """

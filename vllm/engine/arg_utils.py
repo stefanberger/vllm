@@ -34,6 +34,7 @@ from vllm.config import (BlockSize, CacheConfig, CacheDType, CompilationConfig,
                          VllmConfig, get_attr_docs)
 from vllm.config.multimodal import MMCacheType, MultiModalConfig
 from vllm.config.parallel import ExpertPlacementStrategy
+from vllm.config.security import SecurityConfig
 from vllm.config.utils import get_field
 from vllm.logger import init_logger
 from vllm.platforms import CpuArchEnum, current_platform
@@ -482,6 +483,8 @@ class EngineArgs:
 
     kv_sharing_fast_prefill: bool = \
         CacheConfig.kv_sharing_fast_prefill
+
+    security_policy: Optional[str] = SecurityConfig.security_policy
 
     def __post_init__(self):
         # support `EngineArgs(compilation_config={...})`
@@ -934,6 +937,15 @@ class EngineArgs:
         vllm_group.add_argument('--structured-outputs-config',
                                 **vllm_kwargs["structured_outputs_config"])
 
+        # Security policy arguments
+        sv_kwargs = get_kwargs(SecurityConfig)
+        sv_group = parser.add_argument_group(
+            title="SecurityConfig",
+            description=SecurityConfig.__doc__,
+        )
+        sv_group.add_argument("--security-policy",
+                              **sv_kwargs["security_policy"])
+
         # Other arguments
         parser.add_argument('--disable-log-stats',
                             action='store_true',
@@ -987,6 +999,9 @@ class EngineArgs:
 
             self.mm_encoder_tp_mode = "data"
 
+        security_config = SecurityConfig(security_policy=self.security_policy)
+        security_config.maybe_verify_model_signature(self.model)
+
         return ModelConfig(
             model=self.model,
             hf_config_path=self.hf_config_path,
@@ -1038,6 +1053,7 @@ class EngineArgs:
             logits_processors=self.logits_processors,
             video_pruning_rate=self.video_pruning_rate,
             io_processor_plugin=self.io_processor_plugin,
+            security_config=security_config,
         )
 
     def validate_tensorizer_args(self):
