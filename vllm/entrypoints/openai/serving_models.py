@@ -33,6 +33,7 @@ class LoRAModulePath:
     name: str
     path: str
     base_model_name: Optional[str] = None
+    signature_verification_config: Optional[dict[str, str]] = None
 
 
 class OpenAIServingModels:
@@ -77,8 +78,11 @@ class OpenAIServingModels:
         if self.static_lora_modules is None:
             return
         for lora in self.static_lora_modules:
-            load_request = LoadLoRAAdapterRequest(lora_path=lora.path,
-                                                  lora_name=lora.name)
+            load_request = LoadLoRAAdapterRequest(
+                lora_path=lora.path,
+                lora_name=lora.name,
+                signature_verification_config=lora.
+                signature_verification_config)
             load_result = await self.load_lora_adapter(
                 request=load_request, base_model_name=lora.base_model_name)
             if isinstance(load_result, ErrorResponse):

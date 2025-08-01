@@ -2166,7 +2166,7 @@ class TokenizerInfoResponse(OpenAIBaseModel):
 class LoadLoRAAdapterRequest(BaseModel):
     lora_name: str
     lora_path: str
-    signature_verification_config: dict[str, str] = {}
+    signature_verification_config: Optional[dict[str, str]] = None
 
 
 class UnloadLoRAAdapterRequest(BaseModel):
