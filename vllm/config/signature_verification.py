@@ -6,11 +6,12 @@ import os
 from collections.abc import Iterable
 from dataclasses import field
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 import model_signing
 from pydantic import ConfigDict
 from pydantic.dataclasses import dataclass
+from typing_extensions import Self
 
 from vllm.config.utils import config
 from vllm.logger import init_logger
@@ -67,6 +68,54 @@ class SignatureVerificationConfig:
         not been done yet."""
         return self.signature_verification_requested() and \
                not self._verification_done
+
+    @classmethod
+    def from_dict(cls, data: dict[str, str]) -> Optional[Self]:
+        """Convert a dict with user-provided input to a
+        SignatureVerificationConfig object.
+
+        Args:
+            data: User-provided dictionary; typically passed in JSON over REST.
+                  Since the signature verification configuration is optional,
+                  this may also be None.
+
+        Returns None in case the data were None, a SignatureVerificationConfig
+        object otherwise. It may raise an exception if there are unsupported
+        keys in the dictionary.
+        """
+
+        if not data:
+            return None
+
+        def is_true(value: str) -> bool:
+            return value.lower() not in ['0', 'false']
+
+        def ensure_list(value: Union[str, list]) -> list:
+            if isinstance(value, str):
+                return [f.strip() for f in value.split(",")]
+            return value
+
+        for key in data:
+            if key not in [
+                    "verification_method", "signature", "ignore_git_paths",
+                    "identity", "identity_provider", "use_staging",
+                    "certificate_chain", "log_fingerprints", "public_key",
+                    "ignore_paths"
+            ]:
+                raise ValueError(
+                    "'%s' in signature verification config is not supported",
+                    key)
+        return SignatureVerificationConfig(
+            verification_method=data.get("verification_method"),
+            signature=data.get("signature", "model.sig"),
+            ignore_paths=ensure_list(data.get("ignore_paths", [])),
+            ignore_git_paths=is_true(data.get("ignore_git_paths", "0")),
+            identity=data.get("identity", ""),
+            identity_provider=data.get("identity_provider", ""),
+            use_staging=is_true(data.get("use_staging", "0")),
+            certificate_chain=ensure_list(data.get("certificate_chain", "")),
+            log_fingerprints=is_true(data.get("log_fingerprints", "0")),
+            public_key=data.get("public_key"))
 
     def _verify_sigstore(
         self,

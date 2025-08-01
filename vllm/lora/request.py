@@ -6,6 +6,8 @@ from typing import Optional
 
 import msgspec
 
+from vllm.config.signature_verification import SignatureVerificationConfig
+
 
 class LoRARequest(
         msgspec.Struct,
@@ -29,6 +31,7 @@ class LoRARequest(
     long_lora_max_len: Optional[int] = None
     base_model_name: Optional[str] = msgspec.field(default=None)
     tensorizer_config_dict: Optional[dict] = None
+    signature_verification_config: Optional[SignatureVerificationConfig] = None
 
     def __post_init__(self):
         if self.lora_int_id < 1:
@@ -95,3 +98,9 @@ class LoRARequest(
         identified by their names across engines.
         """
         return hash(self.lora_name)
+
+    def maybe_verify_signature(self) -> None:
+        """Verify the signature on a adapter if the user requested it."""
+        svc = self.signature_verification_config
+        if svc and svc.signature_verification_needed():
+            svc.verify_signature(self.lora_path)

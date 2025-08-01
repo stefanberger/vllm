@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Optional, Union
 
-from vllm.config import ModelConfig
+from vllm.config import ModelConfig, SignatureVerificationConfig
 from vllm.engine.protocol import EngineClient
 from vllm.entrypoints.openai.protocol import (ErrorInfo, ErrorResponse,
                                               LoadLoRAAdapterRequest,
@@ -135,10 +135,21 @@ class OpenAIServingModels:
                 return error_check_ret
 
             lora_path = request.lora_path
+
+            try:
+                svc = SignatureVerificationConfig.from_dict(
+                    request.signature_verification_config)
+            except Exception as e:
+                return create_error_response(
+                    message=str(e),
+                    err_type="BadRequestError",
+                    status_code=HTTPStatus.BAD_REQUEST)
+
             unique_id = self.lora_id_counter.inc(1)
             lora_request = LoRARequest(lora_name=lora_name,
                                        lora_int_id=unique_id,
-                                       lora_path=lora_path)
+                                       lora_path=lora_path,
+                                       signature_verification_config=svc)
             if base_model_name is not None and self.is_base_model(
                     base_model_name):
                 lora_request.base_model_name = base_model_name
