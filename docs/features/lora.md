@@ -369,4 +369,130 @@ vllm serve model --enable-lora --max-lora-rank 64
 
 # Bad: unnecessarily high, wastes memory
 vllm serve model --enable-lora --max-lora-rank 256
+
+## Signature Verification on LoRA Adapters
+
+Signature verification on LoRA adapters requires that LoRA adapters have
+been signed with the model_signing library. The person verifying the
+signature on an AI model needs to know what method was used for signing and
+then depending on the method that was chosen, the user may need to know who the
+expected signer of the model is or may need access to a PEM file with a
+certficate chain or a public key.
+
+The following examples show that the signature is in "model.sig", which is the
+default signature file name. If the signature file is given only as a filename
+without path, then a file with this name is assumed to hold the signature in the
+directory of the LoRA adapter. If an absolute path is given, then the signature
+from that file will be used.
+
+Generally, it is necessary to pass a JSON map under the name
+`signature_verification_config`. This map needs to hold all the parameters
+necessary for verifying the signature depending on the chosen method.
+
+For verification of Sigstore signatures use the following:
+
+```bash
+{
+    "signature_verification_config": {
+        "verification_method": "sigstore",
+        "signature": "model.sig",
+        "ignore_paths": "foo,bar",
+        "identity": "user@email.com",
+        "identity_provider": "https://accounts.email.com/"
+    }
+}
+```
+
+The `identity` field describes the expected signer and the
+`identity_provider` shows the URL of the provider that was used when the
+signature was created.
+
+The field `ignore_paths` can be used to provide a comma-separated list of
+files to ignore while verifying a signature. This may be useful in case
+additional files are found there that are not covered by the signature.
+If files without absolute paths are given then these files are assumed to be in
+the LoRA's directory. This option can be applied to all methods shown below.
+
+For verification involving a certificate chain use the following:
+
+```bash
+{
+    "signature_verification_config": {
+        "verification_method": "certificate",
+        "signature": "model.sig",
+        "certificate_chain": "/path/to/certificate/bundle.pem"
+    }
+}
+```
+
+The `certificate-chain` value points to a file holding at least the certificate
+of the root-CA in PEM format. It is possible to provide file without an
+absolute path, such as `bundle.pem`. In this case the file is assumed to be
+located in the LoRA's directory. It is also possible to provide a
+comma-separated list of files.
+
+For verification with a simple public key use the following:
+
+```bash
+{
+    "signature_verification_config": {
+        "verification_method": "key",
+        "signature": "model.sig",
+        "public_key": "/path/to/public-key/key.pem"
+    }
+}
+```
+
+The `public-key` value points to a public key in PEM format. It may either
+contain an absolute path, as shown above, or a filename. In the latter case
+the file is assumed to be found in the LoRA's directory.
+
+For LoRA adapters passed on the command line, signature verification can be
+done as follows. The omission of the `"signature"` key-value pair assumes
+that a default signature file with name `model.sig` is available in the LoRA
+adapter's directory.
+
+```bash
+vllm serve meta-llama/Llama-2-7b-hf \
+    --enable-lora \
+    --lora-modules '{"name": "test", "path": "","signature_verification_config": {"verification-method": "sigstore","identity": "user@email.com","identity-provider": "https://accounts.email.com"}}'
+```
+
+Similarly, it is possible to verify the signature on a dynamically loaded
+LoRA adapter:
+
+```
+curl -X POST http://localhost:8000/v1/load_lora_adapter \
+-H "Content-Type: application/json" \
+-d '{
+    "lora_name": "sql_adapter",
+    "lora_path": "/path/to/sql-lora-adapter"
+    "signature_verification_config": {
+        "verification_method": "sigstore",
+        "identity": "user@email.com",
+        "identity_provider": "https://accounts.email.com"
+     }
+}'
+```
+
+When a LoRA adapter is loaded using the filesystem_resolver plugin while the
+completions API is invoked, it is possible to force signature verification
+with the same type of signature_verification_config as shown in the previous
+examples. Note that the signature verification will only be done the first
+time that the LoRA adapter is loaded in this way. Once it is running, the
+signature verification parameters will be ignored.
+
+```
+curl http://localhost:8000/v1/completions \
+    -H "Content-Type: application/json" \
+    -d '{
+        "model": "Qwen/Qwen2.5-1.5B-Instruct",
+        "prompt": "San Francisco is a",
+        "max_tokens": 7,
+        "temperature": 0,
+        "signature_verification_config": {
+            "verification_method": "certificate",
+            "certificate_chain": "/path/to/certificate/bundle.pem"
+        }
+    }' | jq
 ```
