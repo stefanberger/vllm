@@ -237,7 +237,10 @@ class OpenAIServingModels:
         return None
 
     async def resolve_lora(
-            self, lora_name: str) -> Union[LoRARequest, ErrorResponse]:
+        self,
+        lora_name: str,
+        signature_verification_config: Optional[dict[str, str]] = None
+    ) -> Union[LoRARequest, ErrorResponse]:
         """Attempt to resolve a LoRA adapter using available resolvers.
 
         Args:
@@ -260,7 +263,7 @@ class OpenAIServingModels:
             # Try to resolve using available resolvers
             for resolver in self.lora_resolvers:
                 lora_request = await resolver.resolve_lora(
-                    base_model_name, lora_name)
+                    base_model_name, lora_name, signature_verification_config)
 
                 if lora_request is not None:
                     found_adapter = True

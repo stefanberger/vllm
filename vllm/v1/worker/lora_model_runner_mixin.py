@@ -88,6 +88,12 @@ class LoRAModelRunnerMixin:
         lora_requests: set[LoRARequest]
         prompt_lora_mapping, token_lora_mapping, lora_requests = \
                             input_batch.make_lora_inputs(num_scheduled_tokens)
+
+        # Avoid signature verification to avoid EngineCore termination in case
+        # of signature verification failure.
+        for lora_request in lora_requests:
+            lora_request.signature_verification_config = None
+
         return self._set_active_loras(prompt_lora_mapping, token_lora_mapping,
                                       lora_requests)
 

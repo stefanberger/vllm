@@ -5,6 +5,7 @@ import os
 from typing import Optional
 
 import vllm.envs as envs
+from vllm.config import SignatureVerificationConfig
 from vllm.lora.request import LoRARequest
 from vllm.lora.resolver import LoRAResolver, LoRAResolverRegistry
 
@@ -14,8 +15,12 @@ class FilesystemResolver(LoRAResolver):
     def __init__(self, lora_cache_dir: str):
         self.lora_cache_dir = lora_cache_dir
 
-    async def resolve_lora(self, base_model_name: str,
-                           lora_name: str) -> Optional[LoRARequest]:
+    async def resolve_lora(
+        self,
+        base_model_name: str,
+        lora_name: str,
+        signature_verification_config: Optional[dict[str, str]] = None
+    ) -> Optional[LoRARequest]:
         lora_path = os.path.join(self.lora_cache_dir, lora_name)
         if os.path.exists(lora_path):
             adapter_config_path = os.path.join(self.lora_cache_dir, lora_name,
@@ -25,10 +30,13 @@ class FilesystemResolver(LoRAResolver):
                     adapter_config = json.load(file)
                 if adapter_config["peft_type"] == "LORA" and adapter_config[
                         "base_model_name_or_path"] == base_model_name:
-                    lora_request = LoRARequest(lora_name=lora_name,
-                                               lora_int_id=abs(
-                                                   hash(lora_name)),
-                                               lora_path=lora_path)
+                    svc = SignatureVerificationConfig.from_dict(
+                        signature_verification_config)
+                    lora_request = LoRARequest(
+                        lora_name=lora_name,
+                        lora_int_id=abs(hash(lora_name)),
+                        lora_path=lora_path,
+                        signature_verification_config=svc)
                     return lora_request
         return None
 

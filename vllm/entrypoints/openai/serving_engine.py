@@ -473,8 +473,9 @@ class OpenAIServing:
             return None
         if request.model in self.models.lora_requests:
             return None
-        if (envs.VLLM_ALLOW_RUNTIME_LORA_UPDATING and request.model and
-            (load_result := await self.models.resolve_lora(request.model))):
+        if (envs.VLLM_ALLOW_RUNTIME_LORA_UPDATING and request.model
+                and (load_result := await self.models.resolve_lora(
+                    request.model, request.signature_verification_config))):
             if isinstance(load_result, LoRARequest):
                 return None
             if (isinstance(load_result, ErrorResponse) and

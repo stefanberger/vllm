@@ -317,6 +317,8 @@ class ResponsesRequest(OpenAIBaseModel):
     top_p: Optional[float] = None
     truncation: Optional[Literal["auto", "disabled"]] = "disabled"
     user: Optional[str] = None
+    # For LoRA signatures:
+    signature_verification_config: Optional[dict[str, str]] = None
 
     # --8<-- [start:responses-extra-params]
     request_id: str = Field(
