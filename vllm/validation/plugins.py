@@ -12,6 +12,7 @@ logger = init_logger(__name__)
 
 class ModelType(int, enum.Enum):
     MODEL_TYPE_AI_MODEL = 1
+    MODEL_TYPE_LORA = 2
 
 
 class ModelValidationPlugin(ABC):

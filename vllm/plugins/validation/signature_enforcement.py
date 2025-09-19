@@ -26,8 +26,11 @@ class SignatureEnforcement(ModelValidationPlugin):
 
     def validate_model(self, model_type: ModelType, model_path: str) -> None:
         security_policy = self.security_config.getSecurityPolicy()
-        if security_policy and model_type == ModelType.MODEL_TYPE_AI_MODEL:
-            security_policy.maybe_verify_model_signature(model_path)
+        if security_policy:
+            if model_type == ModelType.MODEL_TYPE_AI_MODEL:
+                security_policy.maybe_verify_model_signature(model_path)
+            elif model_type == ModelType.MODEL_TYPE_LORA:
+                security_policy.maybe_verify_lora_signature(model_path)
 
 
 def register_model_validation_plugin():
