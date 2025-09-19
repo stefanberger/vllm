@@ -28,6 +28,10 @@ class SecurityPlugin(ABC):
     def maybe_verify_model_signature(self, model_path: str) -> None:
         pass
 
+    @abstractmethod
+    def maybe_verify_lora_signature(self, model_path: str) -> None:
+        pass
+
 
 @dataclass
 class _SecurityPluginRegistry:
@@ -63,6 +67,13 @@ class _SecurityPluginRegistry:
         exception."""
         for plugin in self.plugins.values():
             plugin.maybe_verify_model_signature(model_path)
+
+    def maybe_verify_lora_signature(self, model_path: str) -> None:
+        """Have all plugins verify the signature on the LoRA at the given
+        path. Any plugin that does not accept the signature will throw an
+        exception."""
+        for plugin in self.plugins.values():
+            plugin.maybe_verify_lora_signature(model_path)
 
 
 SecurityPluginRegistry = _SecurityPluginRegistry()

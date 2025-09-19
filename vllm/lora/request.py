@@ -6,6 +6,8 @@ from typing import Optional
 
 import msgspec
 
+from vllm.security.plugins import SecurityPluginRegistry
+
 
 class LoRARequest(
         msgspec.Struct,
@@ -95,3 +97,8 @@ class LoRARequest(
         identified by their names across engines.
         """
         return hash(self.lora_name)
+
+    def maybe_verify_signature(self) -> None:
+        """Verify the signature on an adapter if the security policy requires
+        it."""
+        SecurityPluginRegistry.maybe_verify_lora_signature(self.lora_path)

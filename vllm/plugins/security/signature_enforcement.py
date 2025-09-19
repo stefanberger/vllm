@@ -24,6 +24,11 @@ class SignatureEnforcement(SecurityPlugin):
         if security_policy:
             security_policy.maybe_verify_model_signature(model_path)
 
+    def maybe_verify_lora_signature(self, model_path: str) -> None:
+        security_policy = self.security_config.getSecurityPolicy()
+        if security_policy:
+            security_policy.maybe_verify_lora_signature(model_path)
+
 
 def register_security_plugin():
     """Register the security plugin with vLLM"""
