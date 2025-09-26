@@ -1,9 +1,18 @@
-# Security Policy
+# Using vLLM with a Security Policy
 
 vLLM supports a security policy for signature verification on AI models and
 LoRA adapters to ensure their integrity and provenance. The security policy is a
 JSON document that is passed to vLLM using the `--security-policy` command
 line option.
+
+To start vLLM with signature enforcement support it is necessary to add the name
+of the security plugin to the comma-separated list of plugins in the
+`VLLM_PLUGINS` environment variable:
+
+```bash
+VLLM_PLUGINS=lora_filesystem_resolver,signature_enforcement \
+    vllm serve SOME_MODEL  --security-policy mypolicy.json
+```
 
 ## Security Policy for Signature Verification
 

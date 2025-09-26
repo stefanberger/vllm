@@ -39,7 +39,7 @@ async def test_filesystem_resolver(adapter_cache, zephyr_lora_files):
     fs_resolver = FilesystemResolver(adapter_cache)
     assert fs_resolver is not None
 
-    lora_request = await fs_resolver.resolve_lora(MODEL_NAME, LORA_NAME, None)
+    lora_request = await fs_resolver.resolve_lora(MODEL_NAME, LORA_NAME)
     assert lora_request is not None
     assert lora_request.lora_name == LORA_NAME
     assert lora_request.lora_path == os.path.join(adapter_cache, LORA_NAME)
@@ -50,8 +50,7 @@ async def test_missing_adapter(adapter_cache):
     fs_resolver = FilesystemResolver(adapter_cache)
     assert fs_resolver is not None
 
-    missing_lora_request = await fs_resolver.resolve_lora(
-        MODEL_NAME, "foobar", None)
+    missing_lora_request = await fs_resolver.resolve_lora(MODEL_NAME, "foobar")
     assert missing_lora_request is None
 
 
@@ -63,5 +62,5 @@ async def test_nonlora_adapter(adapter_cache, pa_files):
     fs_resolver = FilesystemResolver(adapter_cache)
     assert fs_resolver is not None
 
-    pa_request = await fs_resolver.resolve_lora(MODEL_NAME, PA_NAME, None)
+    pa_request = await fs_resolver.resolve_lora(MODEL_NAME, PA_NAME)
     assert pa_request is None

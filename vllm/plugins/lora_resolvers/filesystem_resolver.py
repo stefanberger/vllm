@@ -5,7 +5,6 @@ import os
 from typing import Optional
 
 import vllm.envs as envs
-from vllm.config.security import SecurityConfig
 from vllm.lora.request import LoRARequest
 from vllm.lora.resolver import LoRAResolver, LoRAResolverRegistry
 
@@ -15,10 +14,8 @@ class FilesystemResolver(LoRAResolver):
     def __init__(self, lora_cache_dir: str):
         self.lora_cache_dir = lora_cache_dir
 
-    async def resolve_lora(
-            self, base_model_name: str, lora_name: str,
-            security_config: Optional[SecurityConfig]
-    ) -> Optional[LoRARequest]:
+    async def resolve_lora(self, base_model_name: str,
+                           lora_name: str) -> Optional[LoRARequest]:
         lora_path = os.path.join(self.lora_cache_dir, lora_name)
         if os.path.exists(lora_path):
             adapter_config_path = os.path.join(self.lora_cache_dir, lora_name,
@@ -31,8 +28,7 @@ class FilesystemResolver(LoRAResolver):
                     lora_request = LoRARequest(lora_name=lora_name,
                                                lora_int_id=abs(
                                                    hash(lora_name)),
-                                               lora_path=lora_path,
-                                               security_config=security_config)
+                                               lora_path=lora_path)
                     return lora_request
         return None
 

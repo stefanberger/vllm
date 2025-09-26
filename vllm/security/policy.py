@@ -469,17 +469,6 @@ class SecurityPolicy:
             .get("signatures", {})\
             .get("loras") is not None
 
-    def model_need_verification(self: Self, model_path: str) -> bool:
-        """Check whether a model with the given path  still needs to be
-        verified."""
-        if model_path in self.models_verified:
-            return False
-        try:
-            svc = self.getSignatureVerificationConfig("models", model_path)
-            return svc.verification_method != "skip"
-        except Exception:
-            return False
-
     def verify_model_signature(self: Self, model_path: str) -> None:
         """Verify the signature on a model given its path."""
         svc = self.getSignatureVerificationConfig("models", model_path)
@@ -494,6 +483,20 @@ class SecurityPolicy:
            os.path.isabs(model_path) and \
            os.path.exists(model_path):
             self.verify_model_signature(model_path)
+
+    def model_signature_verification_needed(self, model_path) -> bool:
+        """Check whether model signature verification was requested for
+        this model but not done, yet."""
+        if not self.model_signature_verification_requested():
+            return False
+
+        if model_path in self.models_verified:
+            return False
+        try:
+            svc = self.getSignatureVerificationConfig("models", model_path)
+            return svc.verification_method != "skip"
+        except Exception:
+            return False
 
     def verify_lora_signature(self: Self, model_path: str) -> None:
         """Verify the signature on a LoRA given its path."""

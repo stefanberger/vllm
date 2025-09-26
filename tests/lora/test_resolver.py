@@ -5,7 +5,6 @@ from typing import Optional
 
 import pytest
 
-from vllm.config.security import SecurityConfig
 from vllm.lora.request import LoRARequest
 from vllm.lora.resolver import LoRAResolver, LoRAResolverRegistry
 
@@ -13,10 +12,8 @@ from vllm.lora.resolver import LoRAResolver, LoRAResolverRegistry
 class DummyLoRAResolver(LoRAResolver):
     """A dummy LoRA resolver for testing."""
 
-    async def resolve_lora(
-            self, base_model_name: str, lora_name: str,
-            security_config: Optional[SecurityConfig]
-    ) -> Optional[LoRARequest]:
+    async def resolve_lora(self, base_model_name: str,
+                           lora_name: str) -> Optional[LoRARequest]:
         if lora_name == "test_lora":
             return LoRARequest(
                 lora_name=lora_name,
@@ -67,13 +64,12 @@ async def test_dummy_resolver_resolve():
     lora_name = "test_lora"
 
     # Test successful resolution
-    result = await dummy_resolver.resolve_lora(base_model_name, lora_name,
-                                               None)
+    result = await dummy_resolver.resolve_lora(base_model_name, lora_name)
     assert isinstance(result, LoRARequest)
     assert result.lora_name == lora_name
     assert result.lora_path == f"/dummy/path/{base_model_name}/{lora_name}"
 
     # Test failed resolution
     result = await dummy_resolver.resolve_lora(base_model_name,
-                                               "nonexistent_lora", None)
+                                               "nonexistent_lora")
     assert result is None

@@ -24,6 +24,7 @@ from vllm.logging_utils.dump_input import dump_engine_exception
 from vllm.lora.request import LoRARequest
 from vllm.multimodal import MULTIMODAL_REGISTRY
 from vllm.multimodal.cache import engine_receiver_cache_from_config
+from vllm.security.plugins import SecurityPluginRegistry
 from vllm.tasks import POOLING_TASKS, SupportedTask
 from vllm.transformers_utils.config import (
     maybe_register_config_serialize_by_value)
@@ -76,10 +77,12 @@ class EngineCore:
         self.vllm_config = vllm_config
         logger.info("Initializing a V1 LLM engine (v%s) with config: %s",
                     VLLM_VERSION, vllm_config)
+        SecurityPluginRegistry.set_security_config(
+            vllm_config.model_config.security_config)
+        SecurityPluginRegistry.maybe_verify_model_signature(
+            vllm_config.model_config.model)
 
-        security_config = vllm_config.model_config.security_config
-        if security_config and \
-           security_config.model_signature_verification_needed(
+        if SecurityPluginRegistry.model_signature_verification_needed(
                 vllm_config.model_config.model):
             raise Exception("Signature verification was requested for "
                             f"{vllm_config.model_config.model} but was not "

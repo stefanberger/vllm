@@ -41,6 +41,7 @@ from vllm.platforms import CpuArchEnum, current_platform
 from vllm.plugins import load_general_plugins
 from vllm.ray.lazy_utils import is_ray_initialized
 from vllm.reasoning import ReasoningParserManager
+from vllm.security.plugins import SecurityPluginRegistry
 from vllm.test_utils import MODEL_WEIGHTS_S3_BUCKET, MODELS_ON_S3
 from vllm.transformers_utils.config import (get_model_path, is_interleaved,
                                             maybe_override_with_speculators)
@@ -498,6 +499,11 @@ class EngineArgs:
         # Setup plugins
         from vllm.plugins import load_general_plugins
         load_general_plugins()
+
+        # Set SecurityConfig on all plugins
+        SecurityPluginRegistry.set_security_config(
+            SecurityConfig(security_policy=self.security_policy))
+
         # when use hf offline,replace model id to local model path
         if huggingface_hub.constants.HF_HUB_OFFLINE:
             model_id = self.model
@@ -1000,7 +1006,6 @@ class EngineArgs:
             self.mm_encoder_tp_mode = "data"
 
         security_config = SecurityConfig(security_policy=self.security_policy)
-        security_config.maybe_verify_model_signature(self.model)
 
         return ModelConfig(
             model=self.model,

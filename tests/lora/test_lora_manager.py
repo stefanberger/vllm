@@ -25,6 +25,9 @@ from vllm.lora.request import LoRARequest
 from vllm.lora.worker_manager import (LRUCacheWorkerLoRAManager,
                                       WorkerLoRAManager)
 from vllm.platforms import current_platform
+from vllm.plugins.security.signature_enforcement import (
+    register_security_plugin)
+from vllm.security.plugins import SecurityPluginRegistry
 from vllm.security.policy import SignatureVerificationError
 
 from .utils import create_peft_lora
@@ -774,7 +777,10 @@ def test_worker_adapter_manager_security_policy(dist_init, dummy_model_gate_up,
         file.write(json.dumps(sp_json))
         file.flush()
 
+        register_security_plugin()
         security_config = SecurityConfig(security_policy=file.name)
+        SecurityPluginRegistry.set_security_config(security_config)
+
         vllm_config = VllmConfig(model_config=model_config,
                                  lora_config=lora_config,
                                  security_config=security_config)
@@ -809,14 +815,8 @@ def test_worker_adapter_manager_security_policy(dist_init, dummy_model_gate_up,
         mapping = LoRAMapping([], [])
         if exc:
             with pytest.raises(exc):
-                worker_adapter_manager.set_active_adapters([
-                    LoRARequest("1",
-                                1,
-                                dummy_lora_files,
-                                security_config=security_config)
-                ], mapping)
+                worker_adapter_manager.set_active_adapters(
+                    [LoRARequest("1", 1, dummy_lora_files)], mapping)
         else:
-            worker_adapter_manager.set_active_adapters([
-                LoRARequest(
-                    "1", 1, dummy_lora_files, security_config=security_config)
-            ], mapping)
+            worker_adapter_manager.set_active_adapters(
+                [LoRARequest("1", 1, dummy_lora_files)], mapping)
