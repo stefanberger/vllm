@@ -73,6 +73,7 @@ from vllm.v1.request import Request, RequestStatus
 from vllm.v1.serial_utils import MsgpackDecoder, MsgpackEncoder
 from vllm.v1.structured_output import StructuredOutputManager
 from vllm.v1.utils import compute_iteration_details
+from vllm.validation.plugins import ModelType, ModelValidationPluginRegistry
 from vllm.version import __version__ as VLLM_VERSION
 
 logger = init_logger(__name__)
@@ -106,6 +107,11 @@ class EngineCore:
                 vllm_config,
             )
 
+        if os.path.isdir(vllm_config.model_config.model):
+            ModelValidationPluginRegistry.validate_model(
+                ModelType.MODEL_TYPE_AI_MODEL, vllm_config.model_config.model
+            )
+
         self.log_stats = log_stats
 
         # Setup Model.
@@ -120,6 +126,17 @@ class EngineCore:
 
         # Setup KV Caches and update CacheConfig after profiling.
         kv_cache_config = self._initialize_kv_caches(vllm_config)
+
+        if ModelValidationPluginRegistry.model_validation_needed(
+            ModelType.MODEL_TYPE_AI_MODEL, vllm_config.model_config.model
+        ):
+            raise Exception(
+                "Model validation was requested for "
+                f"{vllm_config.model_config.model} but was not "
+                "done since a code path was taken that is not yet "
+                "instrumented for model validation."
+            )
+
         self.structured_output_manager = StructuredOutputManager(vllm_config)
 
         # Setup scheduler.
