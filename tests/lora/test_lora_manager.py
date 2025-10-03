@@ -27,6 +27,11 @@ from vllm.lora.peft_helper import PEFTHelper
 from vllm.lora.request import LoRARequest
 from vllm.lora.worker_manager import LRUCacheWorkerLoRAManager, WorkerLoRAManager
 from vllm.platforms import current_platform
+from vllm.validation.plugins import (
+    ModelType,
+    ModelValidationPlugin,
+    ModelValidationPluginRegistry,
+)
 
 from .utils import create_peft_lora
 
@@ -899,4 +904,39 @@ def test_load_adapter_warns_on_target_modules_restriction(
         found = any("target_modules" in str(call) for call in warning_args)
         assert found, (
             f"Expected warning about target_modules restriction, got: {warning_args}"
+        )
+
+
+class MyModelValidator(ModelValidationPlugin):
+    def model_validation_needed(self, model_type: ModelType, model_path: str) -> bool:
+        return True
+
+    def validate_model(
+        self, model_type: ModelType, model_path: str, model: str | None = None
+    ) -> None:
+        raise BaseException("Model did not validate")
+
+
+def test_worker_adapter_manager_security_policy(dist_init, dummy_model_gate_up):
+    my_model_validator = MyModelValidator()
+    ModelValidationPluginRegistry.register_plugin("test", my_model_validator)
+
+    lora_config = LoRAConfig(
+        max_lora_rank=8, max_cpu_loras=4, max_loras=4, lora_dtype=DEFAULT_DTYPE
+    )
+
+    model_config = ModelConfig(max_model_len=16)
+    vllm_config = VllmConfig(model_config=model_config, lora_config=lora_config)
+
+    worker_adapter_manager = WorkerLoRAManager(
+        vllm_config,
+        "cpu",
+        EMBEDDING_MODULES,
+    )
+    worker_adapter_manager.create_lora_manager(dummy_model_gate_up)
+
+    mapping = LoRAMapping([], [])
+    with pytest.raises(BaseException, match="Model did not validate"):
+        worker_adapter_manager.set_active_adapters(
+            [LoRARequest("1", 1, "/not/used")], mapping
         )
