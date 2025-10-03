@@ -15,7 +15,7 @@ from vllm.config import ModelConfig
 from vllm.config.load import LoadConfig
 from vllm.logger import init_logger
 from vllm.model_executor.layers.quantization.torchao import torchao_version_at_least
-from vllm.model_executor.model_loader.base_loader import BaseModelLoader
+from vllm.model_executor.model_loader.base_loader import BaseModelLoader, DownloadType
 from vllm.model_executor.model_loader.ep_weight_filter import (
     compute_local_expert_ids,
 )
@@ -384,3 +384,8 @@ class DefaultModelLoader(BaseModelLoader):
                     "Following weights were not initialized from "
                     f"checkpoint: {weights_not_loaded}"
                 )
+
+    def get_download_type(self, model_name_or_path: str) -> DownloadType:
+        if os.path.isdir(model_name_or_path):
+            return DownloadType.LOCAL_FILE
+        return DownloadType.HUGGINGFACE_HUB
